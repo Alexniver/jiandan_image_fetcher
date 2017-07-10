@@ -86,12 +86,12 @@ func RunFetchUrl() {
 	wg.Add(workerNum)
 	for i := 0; i < workerNum; i ++ {
 		go func() {
-			for url := range resultPageUrlChannel {
+			for url := range resultPageUrlChannel { //何时关闭channel是个问题
 				FetchUrlByGoQuery(url)
-				if url == "http://jandan.net/ooxx/page-1" {
-					log.Println("close resultPageUrlChannel")
-					close(resultPageUrlChannel)
-				}
+				//if url == "http://jandan.net/ooxx/page-1" {
+				//	log.Println("close resultPageUrlChannel")
+				//	close(resultPageUrlChannel)
+				//}
 			}
 			wg.Done()
 		}()
@@ -113,10 +113,10 @@ func RunDownloadImg() {
 			for url := range resultImgUrlChannel { // 何时关闭channel是个问题
 				//log.Println("download image, url : ", url)
 				DownloadImg(url)
-				if url == "" {
-					log.Println("close resultImgUrlChannel")
-					close(resultImgUrlChannel)
-				}
+				//if url == "" {
+				//	log.Println("close resultImgUrlChannel")
+				//	close(resultImgUrlChannel)
+				//}
 			}
 			wg.Done()
 		}()
