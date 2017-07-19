@@ -17,8 +17,8 @@ func(urlAccessedMapAndLock *UrlAccessedMapAndLock)IsExistAndPutIn(url string) bo
 	defer urlAccessedMapAndLock.Lock.Unlock()
 	if _, ok := urlAccessedMapAndLock.UrlAccessedMap[url]; !ok {
 		urlAccessedMapAndLock.UrlAccessedMap[url] = struct {}{}
-		return true
+		return false
 	}
-	return false
+	return true
 }
 

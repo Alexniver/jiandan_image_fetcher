@@ -5,17 +5,13 @@ import (
 	"log"
 )
 
-var urlSearchedMap = make(map[string]struct{})
-var imageToDownloadMap = make(map[string]struct{})
-var imageDownloadedMap = make(map[string]struct{})
-
-var muxForUrl sync.RWMutex
-var muxForImg sync.RWMutex
-var muxForImgDownloaded sync.RWMutex
 
 func Run() {
 	jianDanFetcherChan := make(chan *JiandanFetcher) // job channel
 	doneChan := make(chan struct{}) // 所有worker停止干活的条件是， 当某一个fetcher, 返回的所有imgurl链接，都已经在imgDownloaded中
+
+	pageAccessedMap := NewUrlAccessedMapAndLock()
+	imgAccessedMap := NewUrlAccessedMapAndLock()
 
 
 	var wg sync.WaitGroup // 用于wait pageUrlChanChan的同步, 每向pageUrlChanChan/imgUrlChanChan中加1个channel, 则 wg + 1, 同步等待相关程序 执行完毕
@@ -26,6 +22,8 @@ func Run() {
 	go func() {
 		jianDanFetcherChan <- NewJiandanFetcher(rootPageUrl)
 	}()
+
+	log.Println("v2")
 
 	for i := 0; i < 100; i ++ {
 		// 工人池
@@ -39,37 +37,18 @@ func Run() {
 					jiandanFetcher.Fetch()
 					go func() {
 						for pageUrl := range jiandanFetcher.UrlForPageChan {
-							muxForUrl.RLock()
-							if _, ok := urlSearchedMap[pageUrl]; !ok {
-								muxForUrl.RUnlock()
-
-								muxForUrl.Lock()
-								urlSearchedMap[pageUrl] = struct{}{} //待下载
-								muxForUrl.Unlock()
-
+							if !pageAccessedMap.IsExistAndPutIn(pageUrl) {
 								jianDanFetcherChan <- NewJiandanFetcher(pageUrl)
-							} else {
-								muxForUrl.RUnlock()
 							}
 						}
 					}()
 
 					for imgUrl := range jiandanFetcher.UrlForImgChan {
-						muxForImg.Lock()
-						if _, ok := imageToDownloadMap[imgUrl]; !ok {
-							// muxForImg.RUnlock()
-
-							imageToDownloadMap[imgUrl] = struct{}{} //待下载
-							muxForImg.Unlock()
+						if !imgAccessedMap.IsExistAndPutIn(imgUrl) {
 
 							DownloadImg(imgUrl)
 
-							muxForImgDownloaded.Lock()
-							imageDownloadedMap[imgUrl] = struct{}{} // 已下载
-							muxForImgDownloaded.Unlock()
 							gotNewImg = true
-						} else {
-							muxForImg.Unlock()
 						}
 					}
 
